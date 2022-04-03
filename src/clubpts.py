@@ -1,87 +1,63 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 def calc_club_pts(
         importance_coefficient: int,
-        home_club_pts: int,
-        away_club_pts: int,
-        home_goals: int,
-        away_goals: int,
-        results: int,
-        home_club_pts_after: int,
-        away_club_pts_after: int,
-) -> tuple[int, int]:
+        target_club_pts: int,
+        opponent_club_pts: int,
+        target_goals: int,
+        opponent_goals: int,
+        pk_win: bool = False,
+) -> int:
     """クラブポイントを計算する関数.
     試合の重要度係数 (A) × (試合の結果係数(B) - 試合の期待結果係数(C) )
 
-    :param home_club_pts: ホームチームの試合前のクラブポイント
-    :param away_club_pts: アウェイチームの試合前のクラブポイント
-    :param home_goals: ホームチームのゴール数
-    :param away_goals: アウェイチームのゴール数
-    :param results: 1 -> ホームの勝ち, -1 -> アウェイの勝ち, 0 -> 引き分け
-    :returns: 両チームのクラブポイント
+    :param importance_coefficient: 試合の重要度係数
+    :param target_club_pts: 計算対象のチームの試合前のクラブポイント
+    :param opponent_club_pts: 相手チームの試合前のクラブポイント
+    :param target_goals: 計算対象のチームのゴール数
+    :param opponent_goals: 相手チームのゴール数
+    :param pk_win: 計算対象のチームがPK戦で勝利
+    :returns: クラブポイント
     """
-
-    # 勝利係数
-    win_coefficient = 1  # 通常勝利
-    win_coefficient2 = 0.75  # PK戦勝利
-    draw_pkloss_coefficient = 0.5  # 引分、PK負け
-    loss_coefficient = 0
-
-    # ホーム計算
-    home_a = importance_coefficient
-
-    if home_goals > away_goals:
-        home_b = win_coefficient
-    elif home_goals == away_goals:
-        home_b = draw_pkloss_coefficient
+    if target_goals > opponent_goals:
+        b = 1  # 通常勝利
+    elif target_goals < opponent_goals:
+        b = 0  # 負け
+    elif pk_win:
+        b = 0.75  # PK戦勝利
     else:
-        home_b = loss_coefficient
-
-    home_d = away_club_pts - home_club_pts
-
-    home_c = 1 / (10 ** (home_d / 600) + 1)
-
-    home_club_pts_after_buf = \
-        home_a * (home_b - home_c)
-
-    home_club_pts_after = round(home_club_pts + home_club_pts_after_buf)
-
-    # アウェイ計算
-    away_a = importance_coefficient
-
-    if away_goals > home_goals:
-        away_b = win_coefficient
-    elif away_goals == home_goals:
-        away_b = draw_pkloss_coefficient
-    else:
-        away_b = loss_coefficient
-
-    away_d = home_club_pts - away_club_pts
-
-    away_c = 1 / (10 ** (away_d / 600) + 1)
-
-    away_club_pts_after_buf = \
-        away_a * (away_b - away_c)
-
-    away_club_pts_after = round(away_club_pts + away_club_pts_after_buf)
-
-    return home_club_pts_after, away_club_pts_after
+        b = 0.5  # 引分、PK負け
+    c = calc_prediction(
+        target_club_pts=target_club_pts,
+        opponent_club_pts=opponent_club_pts,
+    )
+    delta = importance_coefficient * (b - c)
+    return round(target_club_pts + delta)
 
 
-def calc_predection_winner(  # 勝敗予想
-        home_club_pts: int,
-        away_club_pts: int,
-        home_predection,
-        away_predection
-) -> tuple[int, int]:
-    home_d = away_club_pts - home_club_pts
-    home_predection = round((1 / (10 ** (home_d / 600) + 1)), 2) * 100
+def calc_prediction(
+        target_club_pts: int,
+        opponent_club_pts: int,
+) -> float:
+    """勝敗予想.
 
-    away_d = home_club_pts - away_club_pts
-    away_predection = round((1 / (10 ** (away_d / 600) + 1)), 2) * 100
+    :param target_club_pts: 計算対象のチームのクラブポイント
+    :param opponent_club_pts: 相手チームのクラブポイント
+    :return: 計算対象チームの勝率
+    """
+    d = opponent_club_pts - target_club_pts
+    return 1 / (10 ** (d / 600) + 1)
 
-    return home_predection, away_predection
 
+if __name__ == '__main__':
+    hone_club_p = calc_club_pts(50, 1400, 1300, 0, 1)
+    away_club_p = calc_club_pts(50, 1300, 1400, 1, 0)
 
-club_p = calc_club_pts(50, 1400, 1300, 0, 1, 0, 0, 0)
-club_pre = calc_predection_winner(1400, 1300, 0, 0)
-print(club_p)
-print(club_pre)
+    home_club_pre = calc_prediction(1400, 1300)
+    away_club_pre = calc_prediction(1300, 1400)
+
+    print(hone_club_p)
+    print(away_club_p)
+    print(home_club_pre)
+    print(away_club_pre)
